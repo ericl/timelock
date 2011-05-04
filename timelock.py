@@ -106,68 +106,106 @@ def solve_puzzle(p):
     print >>sys.stderr
     return (p['ck'] - tmp) % N
 
+def _unpack():
+            solution = solve_puzzle(puzzle)
+            print >>sys.stderr, "solution =", solution
+            if 'ciphertext' in puzzle:
+                print aes_decode(puzzle['ciphertext'], solution)
+
+def _usage():
+    if puzzle:
+        print """*** This is a self-decoding file ***
+
+If no parameter is given, the embedded puzzle will be decoded.
+"""
+    print """Usage: ./timelock.py <PARAM>
+    --h|help                    display this message
+    --new [time]                create a sample puzzle with solution time 'time'
+    --encrypt <file> [time]     encode a file using AES with a random key
+    --pack <file> [time]        pack a self-decoding file using this script
+    <saved state>               print puzzle solution to stdout"""
+    exit(2)
+
+def _new_key_time0(time):
+    try:
+        time = int(sys.argv[2]) * SECOND
+    except:
+        time = 30 * SECOND
+    print "Creating test puzzle with difficulty time %d" % time
+    (key, puzzle) = makepuzzle(time*SPEED)
+    print "key:", str(key) # Recover the key
+    save_puzzle(puzzle)
+
+def _encrypt_file_time0(file, time):
+    msg = open().read()
+    try:
+        time = int(sys.argv[3]) * SECOND
+    except:
+        time = 30 * SECOND
+    (key, puzzle) = makepuzzle(time*SPEED)
+    puzzle['ciphertext'] = aes_encode(msg, key)
+    save_puzzle(puzzle)
+
+def _pack_file_time0(self, file, time):
+    msg = open(file).read()
+    try:
+        time = int(sys.argv[3]) * SECOND
+    except:
+        time = 30 * SECOND
+    (key, puzzle) = makepuzzle(time*SPEED)
+    puzzle['ciphertext'] = aes_encode(msg, key)
+    print "#!/usr/bin/env python"
+    for line in DESCRIPTION.split('\n'):
+        print "#", line
+    print "# Run this program to recover the original message."
+    print "# (scroll down see the program that generated this file)"
+    print "#"
+    putestimation(sys.stdout, puzzle)
+    print "#"
+    print
+    print "puzzle =", puzzle
+    print open(self).read()
+
+def _decode_file(file):
+    try:
+        puzzle = eval(open(file).read())
+    except:
+        print "Error parsing saved state."
+        exit(1)
+    solution = solve_puzzle(puzzle)
+    print >>sys.stderr, "solution =", solution
+    if 'ciphertext' in puzzle:
+        print aes_decode(puzzle['ciphertext'], solution)
+
+class ArgList(list):
+    def __init__(self, *args):
+        list.__init__(self, *args)
+        self.base = self[0]
+        self.first = self[1]
+        self.second = self[2]
+        self.third = self[3]
+
+    def __getitem__(self, i):
+        if i >= len(self):
+            return None
+        return list.__getitem__(self, i)
+
 def main():
-    if len(sys.argv) <= 1:
-        print """Usage: ./timelock.py <PARAM>
-Parameters:
-    --new [seconds]
-    --encrypt <file> [seconds]
-    --pack <file> [seconds]
-    <saved state> [>outfile]"""
-        exit(2)
-    if sys.argv[1] == '--new':
-        try:
-            time = int(sys.argv[2]) * SECOND
-        except:
-            time = 30 * SECOND
-        print "Creating test puzzle with difficulty time %d" % time
-        (key, puzzle) = makepuzzle(time*SPEED)
-        print "key:", str(key) # Recover the key
-        save_puzzle(puzzle)
-    elif sys.argv[1] == '--encrypt':
-        msg = open(sys.argv[2]).read()
-        try:
-            time = int(sys.argv[3]) * SECOND
-        except:
-            time = 30 * SECOND
-        (key, puzzle) = makepuzzle(time*SPEED)
-        puzzle['ciphertext'] = aes_encode(msg, key)
-        save_puzzle(puzzle)
-    elif sys.argv[1] == '--pack':
-        msg = open(sys.argv[2]).read()
-        try:
-            time = int(sys.argv[3]) * SECOND
-        except:
-            time = 30 * SECOND
-        (key, puzzle) = makepuzzle(time*SPEED)
-        puzzle['ciphertext'] = aes_encode(msg, key)
-        print "#!/usr/bin/env python"
-        for line in DESCRIPTION.split('\n'):
-            print "#", line
-        print "# Run this program to recover the original message."
-        print "# (scroll down see the program that generated this file)"
-        print "#"
-        putestimation(sys.stdout, puzzle)
-        print "#"
-        print
-        print "puzzle =", puzzle
-        print open(sys.argv[0]).read()
+    args = ArgList(sys.argv)
+    if args.first == '-h' or args.first == '--help':
+        _usage()
+    elif len(args) == 1 and puzzle:
+        _unpack()
+    elif len(args) == 1:
+        _usage()
+    elif args.first == '--new':
+        _new_key_time0(args.second)
+    elif args.first == '--encrypt':
+        _encrypt_file_time0(args.second, args.third)
+    elif args[1] == '--pack':
+        _pack_file_time0(args.base, args.second, args.third)
     else:
-        try:
-            puzzle = eval(open(sys.argv[1]).read())
-        except:
-            print "Error parsing saved state."
-            exit(1)
-        solution = solve_puzzle(puzzle)
-        print >>sys.stderr, "solution =", solution
-        if 'ciphertext' in puzzle:
-            print aes_decode(puzzle['ciphertext'], solution)
+        _decode_file(args.first)
 
 if __name__ == "__main__":
-    if puzzle:
-        solution = solve_puzzle(puzzle)
-        print >>sys.stderr, "solution =", solution
-        if 'ciphertext' in puzzle:
-            print aes_decode(puzzle['ciphertext'], solution)
-    else:
-        main()
+    main()
