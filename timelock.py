@@ -13,9 +13,8 @@ import sys
 import time
 import os
 
-try:
-    puzzle # placeholder variable
-except:
+# placeholder variable for packed files
+if not 'puzzle' in locals():
     puzzle = None
 
 SECOND = 1
@@ -26,10 +25,21 @@ MONTH = DAY * 31
 YEAR = DAY * 365
 
 MOD_BITS = 2048 # for time-lock puzzle N
-SPEED = 28000
-SAVE_INTERVAL = SPEED * 30 * MINUTE
-
 AES_BITS = 192
+
+def calibrate_speed():
+    p = number.getPrime(MOD_BITS/2)
+    q = number.getPrime(MOD_BITS/2)
+    N = p*q
+    bignum = number.getRandomNumber(MOD_BITS)
+    start = time.time()
+    trials = 100
+    for i in range(trials):
+        bignum = pow(bignum, 2, N)
+    return int(trials/(time.time() - start))
+
+SPEED = calibrate_speed()
+SAVE_INTERVAL = SPEED * 30 * MINUTE
 
 def aes_pad(msg):
     return msg + (16 - len(msg) % 16) * '\0'
@@ -40,7 +50,7 @@ def aes_encode(msg, key):
 def aes_decode(ciphertext, key):
     return AES.new(number.long_to_bytes(key)).decrypt(ciphertext)
 
-# Routine adapted from Anti-Emulation-through-TimeLock-puzzles sample code.
+# Routine adapted from Anti-Emulation-through-TimeLock-puzzles
 def makepuzzle(t):
     # Init PyCrypto RNG
     rnd = randpool.RandomPool()
@@ -81,7 +91,6 @@ def putestimation(outputstream, puzzle):
 def save_puzzle(p):
     state = str(p)
     filename = '%d::%d' % (p['ck'] % 1000000000000, p['t']/SAVE_INTERVAL)
-    assert not os.path.exists(filename)
     with open(filename, 'w') as f:
         f.write('# Run ./timelock FILENAME > OUTFILE to decode\n')
         putestimation(f, p)
@@ -109,10 +118,10 @@ def solve_puzzle(p):
     return (p['ck'] - tmp) % N
 
 def _unpack():
-            solution = solve_puzzle(puzzle)
-            print >>sys.stderr, "solution =", solution
-            if 'ciphertext' in puzzle:
-                print aes_decode(puzzle['ciphertext'], solution)
+    solution = solve_puzzle(puzzle)
+    print >>sys.stderr, "solution =", solution
+    if 'ciphertext' in puzzle:
+        print aes_decode(puzzle['ciphertext'], solution)
 
 def _usage():
     if puzzle:
@@ -125,6 +134,7 @@ If no parameter is given, the embedded puzzle will be decoded.
     --new [time]                create a sample puzzle with solution time 'time'
     --encrypt <file> [time]     encode a file using AES with a random key
     --pack <file> [time]        pack a self-decoding file using this script
+    --benchmark                 print number of operations per second
     <saved state>               print puzzle solution to stdout"""
     exit(2)
 
@@ -202,6 +212,8 @@ def main():
         _usage()
     elif args.first == '--new':
         _new_key_time0(args.second)
+    elif args.first == '--benchmark':
+        print "%d %d-bit modular exponentiations per second" % (SPEED, MOD_BITS)
     elif args.first == '--encrypt':
         _encrypt_file_time0(args.second, args.third)
     elif args[1] == '--pack':
