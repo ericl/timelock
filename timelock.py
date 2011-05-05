@@ -25,8 +25,8 @@ DAY = HOUR * 24
 MONTH = DAY * 31
 YEAR = DAY * 365
 
-MOD_BITS = 1024 # for time-lock puzzle N
-SPEED = 75000
+MOD_BITS = 2048 # for time-lock puzzle N
+SPEED = 28000
 SAVE_INTERVAL = SPEED * 30 * MINUTE
 
 AES_BITS = 192
@@ -80,7 +80,7 @@ def putestimation(outputstream, puzzle):
 
 def save_puzzle(p):
     state = str(p)
-    filename = '%d::%d' % (p['ck'] % 1e12, p['t']/SAVE_INTERVAL)
+    filename = '%d::%d' % (p['ck'] % 1000000000000, p['t']/SAVE_INTERVAL)
     assert not os.path.exists(filename)
     with open(filename, 'w') as f:
         f.write('# Run ./timelock FILENAME > OUTFILE to decode\n')
@@ -92,7 +92,8 @@ def save_puzzle(p):
 def solve_puzzle(p):
     tmp, N, t = p['a'], p['N'], p['t']
     start = time.time()
-    for i in xrange(t):
+    i = 0
+    while i < t:
         if (i+1) % SAVE_INTERVAL == 0:
             p2 = p.copy()
             p2['t'] = t-i
@@ -101,8 +102,9 @@ def solve_puzzle(p):
         tmp = pow(tmp, 2, N)
         if i % 12345 == 1:
             speed = i/(time.time() - start)
-            sys.stderr.write('\r%f squares/s, %d remaining, eta %s        \r'
+            sys.stderr.write('\r%f squares/s, %d remaining, eta %s \r'
                 % (speed, t-i, eta(t-i, speed)))
+        i += 1
     print >>sys.stderr
     return (p['ck'] - tmp) % N
 
@@ -137,7 +139,7 @@ def _new_key_time0(time):
     save_puzzle(puzzle)
 
 def _encrypt_file_time0(file, time):
-    msg = open().read()
+    msg = open(file).read()
     try:
         time = int(sys.argv[3]) * SECOND
     except:
