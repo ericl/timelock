@@ -1,0 +1,10 @@
+This is a simple implemention of a time-lock puzzle generator and solver, as described in:
+
+   Time-lock puzzles and timed-release Crypto (1996)
+   by Ronald L. Rivest, Adi Shamir, and David A. Wagner
+
+Using timelock.py you can create self-decoding files that take a arbitrary amount of computational time to decode (milliseconds to centuries).
+
+I am not a cryptographer, so this implementation should be considered only secure in theory!
+
+Dependencies: python's Crypto library.
