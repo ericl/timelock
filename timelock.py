@@ -6,12 +6,13 @@ Theory:
    by Ronald L. Rivest, Adi Shamir, and David A. Wagner
 """
 
-from Crypto.Util import randpool
-from Crypto.Util import number
+from Crypto.Util import number, randpool
 from Crypto.Cipher import AES
 import sys
 import time
-import os
+
+# Init PyCrypto RNG
+rnd = randpool.RandomPool()
 
 # placeholder variable for packed files
 if not 'puzzle' in locals():
@@ -28,10 +29,10 @@ MOD_BITS = 2048 # for time-lock puzzle N
 AES_BITS = 192
 
 def calibrate_speed():
-    p = number.getPrime(MOD_BITS/2)
-    q = number.getPrime(MOD_BITS/2)
+    p = number.getPrime(MOD_BITS/2, rnd.get_bytes)
+    q = number.getPrime(MOD_BITS/2, rnd.get_bytes)
     N = p*q
-    bignum = number.getRandomNumber(MOD_BITS)
+    bignum = number.getRandomNumber(MOD_BITS, rnd.get_bytes)
     start = time.time()
     trials = 100
     for i in range(trials):
@@ -39,7 +40,7 @@ def calibrate_speed():
     return int(trials/(time.time() - start))
 
 SPEED = calibrate_speed()
-SAVE_INTERVAL = SPEED * 30 * MINUTE
+SAVE_INTERVAL = SPEED * 10 * MINUTE
 
 def aes_pad(msg):
     return msg + (16 - len(msg) % 16) * '\0'
@@ -52,8 +53,6 @@ def aes_decode(ciphertext, key):
 
 # Routine adapted from Anti-Emulation-through-TimeLock-puzzles
 def makepuzzle(t):
-    # Init PyCrypto RNG
-    rnd = randpool.RandomPool()
 
     # Generate 512-bit primes
     p = number.getPrime(MOD_BITS/2, rnd.get_bytes)
