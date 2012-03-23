@@ -66,8 +66,8 @@ def makepuzzle(t):
     e = pow(2, t, totient)
     b = pow(a, e, N)
 
-    ck = (key + b) % N
-    return (key, {'N': N, 'a': a, 't': t, 'ck': ck})
+    cipher_key = (key + b) % N
+    return (key, {'N': N, 'a': a, 'steps': t, 'cipher_key': cipher_key})
 
 def eta(remaining, speed):
     seconds = remaining/speed
@@ -85,11 +85,11 @@ def eta(remaining, speed):
         return '%d years' % (seconds/YEAR)
 
 def putestimation(outputstream, puzzle):
-    outputstream.write("# Estimated time to solve: %s\n" % eta(puzzle['t'], SPEED))
+    outputstream.write("# Estimated time to solve: %s\n" % eta(puzzle['steps'], SPEED))
 
 def save_puzzle(p):
     state = str(p)
-    filename = '%d::%d' % (p['ck'] % 1000000000000, p['t']/SAVE_INTERVAL)
+    filename = 'puzzle_%d-%d' % (p['cipher_key'] % 1000000000000, p['steps']/SAVE_INTERVAL)
     with open(filename, 'w') as f:
         f.write('# Run ./timelock FILENAME > OUTFILE to decode\n')
         putestimation(f, p)
@@ -98,13 +98,13 @@ def save_puzzle(p):
     print >>sys.stderr, "saved state:", filename
 
 def solve_puzzle(p):
-    tmp, N, t = p['a'], p['N'], p['t']
+    tmp, N, t = p['a'], p['N'], p['steps']
     start = time.time()
     i = 0
     while i < t:
         if (i+1) % SAVE_INTERVAL == 0:
             p2 = p.copy()
-            p2['t'] = t-i
+            p2['steps'] = t-i
             p2['a'] = tmp
             save_puzzle(p2)
         tmp = pow(tmp, 2, N)
@@ -114,7 +114,7 @@ def solve_puzzle(p):
                 % (speed, t-i, eta(t-i, speed)))
         i += 1
     print >>sys.stderr
-    return (p['ck'] - tmp) % N
+    return (p['cipher_key'] - tmp) % N
 
 def _unpack():
     solution = solve_puzzle(puzzle)
